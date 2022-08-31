@@ -3,18 +3,10 @@
 import os
 import sys
 from time import sleep
-from typing import List
 import psutil
 from common_lib.common_error import BadUserInputError
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import  DesiredCapabilities
-from selenium.webdriver.common.service import  Service as BaseService
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.edge.service import Service as EdgeService
-from selenium.webdriver.firefox.service import Service as FirefoxService
-from selenium.webdriver.edge.options import Options as EdgeOptions
-from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
@@ -41,6 +33,7 @@ class SeleniumAwsAppLogin(object):
   
   SUBMIT_BUTTON_ELEMENT = "//button[@type='submit']"
   DEBUG_PORT=9222
+  WEBDRIVER_DEBUG_ARGS= f"--port={DEBUG_PORT}"
 
 
   def __init__(self, 
@@ -62,21 +55,6 @@ class SeleniumAwsAppLogin(object):
     self.browser_name = None
     self.os_process_helper:OsProcessHelper = None
     self._set_browser()
-    # self._service = self._get_service()
-    
-  
-  # def _get_service(self)-> BaseService:
-  #   service:BaseService = None
-  #   if self.browser == BrowserType.CHROME:
-  #     service = ChromeService(executable_path=self.selenium_driver_path)
-  #   elif self.browser == BrowserType.EDGE:
-  #     service = EdgeService(executable_path=self.selenium_driver_path)
-  #   elif self.browser == BrowserType.FIREFOX:
-  #     service = FirefoxService(executable_path=self.selenium_driver_path)
-  #   return service
-
-
-
 
   def _set_browser(self) -> None:
     self.browser_name = None
@@ -119,62 +97,25 @@ class SeleniumAwsAppLogin(object):
         return False
     return True
 
-  # def _check_browser_alread_opened(self, 
-  #                                   debug_args:str) -> bool:
-  #   process_alread_opened = False
-  #   for proc in psutil.process_iter():
-  #     try:
-  #       pinfo = proc.as_dict(attrs=['pid', 'name', 'cmdline'])
-  #       if (pinfo["cmdline"] is not None and 
-  #           len(pinfo["cmdline"])> 0 and 
-  #           self.browser_name.lower() in pinfo["name"].lower() and
-  #           debug_args in pinfo["cmdline"]):
-  #         process_alread_opened = True
-  #         break
-  #     except (psutil.NoSuchProcess, IndexError, TypeError):
-  #       pass
-  #   return process_alread_opened
-
-  def _check_webdriver_alread_opened(self, 
-                                    debug_args:str) -> bool:
-    process_alread_opened = False
+  def _get_webdriver_process_info(self, 
+                                    debug_args:str) -> dict:
+    process_info: dict = None
     for proc in psutil.process_iter():
       try:
         pinfo = proc.as_dict(attrs=['pid', 'name', 'cmdline'])
         if (pinfo["cmdline"] is not None and 
             len(pinfo["cmdline"])> 0 and 
             debug_args in pinfo["cmdline"]):
-          process_alread_opened = True
+          process_info = pinfo
           break
       except (psutil.NoSuchProcess, IndexError, TypeError):
         pass
-    return process_alread_opened
+    return process_info
 
-  # def _open_browser_on_debug_mode(self) -> None:
-  #   if sys.platform == "win32":
-  #     command="cmd"
-  #   else:
-  #     command="nohup"
-    
-  #   args=[]
-    
-  #   if sys.platform == "win32":
-  #     # args.extend(["/c", "start", self.browser_name])
-  #     args.extend(["/c", "start", self.browser_name])
-  #   else:
-  #     args.extend([self.browser_path])
-    
-  #   debug_args:str = None
-  #   if self.browser == BrowserType.CHROME or self.browser == BrowserType.EDGE:
-  #     debug_args= f"--remote-debugging-port={self.DEBUG_PORT}"
-  #   elif self.browser == BrowserType.FIREFOX:
-  #     debug_args = f"--start-debugger-server {self.DEBUG_PORT}"
+  def _check_webdriver_alread_opened(self, 
+                                    debug_args:str) -> bool:
+    return False if self._get_webdriver_process_info(debug_args) is None else True
 
-  #   args.extend([debug_args])
-
-  #   if not self._check_browser_alread_opened(debug_args=debug_args):
-  #     self.os_process_helper = OsProcessHelper(command=command, args=args)
-  #     self.os_process_helper.start()
  
   def _start_detached_webdriver(self) -> None:
     if sys.platform == "win32":
@@ -189,28 +130,12 @@ class SeleniumAwsAppLogin(object):
     else:
       args.extend([self.selenium_driver_path, f"--port={self.DEBUG_PORT}"])
     
-    debug_args= f"--port={self.DEBUG_PORT}"
-    args.extend([debug_args])
+    args.extend([self.WEBDRIVER_DEBUG_ARGS])
     
-    if not self._check_webdriver_alread_opened(debug_args=debug_args):
+    if not self._check_webdriver_alread_opened(debug_args=self.WEBDRIVER_DEBUG_ARGS):
       self.os_process_helper = OsProcessHelper(command=command, args=args)
       self.os_process_helper.start()
     
-  # def _get_browser_options(self) -> ArgOptions:
-  #   """
-    
-  #   """
-  #   browser_options = None
-  #   if self.browser == BrowserType.CHROME:
-  #     browser_options = ChromeOptions()
-  #   elif self.browser == BrowserType.EDGE:
-  #     browser_options = EdgeOptions()
-  #   elif self.browser == BrowserType.FIREFOX:
-  #     browser_options = FirefoxOptions()
-
-  #   browser_options.add_experimental_option("debuggerAddress","localhost:9222")
-  #   return browser_options
-
   def _check_debug_port_opened(self) -> bool:
     """_summary_
 
@@ -223,21 +148,6 @@ class SeleniumAwsAppLogin(object):
     check = a_socket.connect_ex(location)
 
     return (check == 0)
-
-
-  # def _get_web_driver(self) -> RemoteWebDriver:
-  #   """
-    
-  #   """
-  #   browser_options = self._get_browser_options()
-  #   driver:RemoteWebDriver = None
-  #   if self.browser == BrowserType.CHROME:
-  #     driver = webdriver.Chrome(service=self._service, options=browser_options)
-  #   elif self.browser == BrowserType.EDGE:
-  #     driver = webdriver.Edge(service=self._service, options=browser_options)
-  #   elif self.browser == BrowserType.FIREFOX:
-  #     driver = webdriver.Firefox(service=self._service, options=browser_options)
-  #   return driver
 
   def _get_web_driver(self) -> RemoteWebDriver:
     """
@@ -257,6 +167,7 @@ class SeleniumAwsAppLogin(object):
 
     self._start_detached_webdriver()
     driver = self._get_web_driver()
+    driver.maximize_window()
     
     while(not self._check_debug_port_opened()):
       print("waiting for remote debug")
@@ -292,6 +203,13 @@ class SeleniumAwsAppLogin(object):
           if self.check_exists_by_xpath(browser=driver, xpath="//b[contains(.,'Authorization failed')]"):
               driver.close()
               raise AwsSsoUserCodeAuthorizationException()
+
+
+    process_info = self._get_webdriver_process_info(self.WEBDRIVER_DEBUG_ARGS)
+    if process_info and "pid" in process_info:
+      self.os_process_helper.kill(process_info["pid"])
+    
+    self.os_process_helper.finish()
 
     # wait.until(EC.visibility_of_any_elements_located((By.CLASS_NAME, 'user-display-name')))
     # driver.close()

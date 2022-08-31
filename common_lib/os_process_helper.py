@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 # -*- coding: UTF-8 -*-
+from random import triangular
 import sys
 from subprocess import Popen
+import psutil
 from subprocess import DEVNULL
 from typing import List
 if sys.platform == "win32":
@@ -30,9 +32,19 @@ class OsProcessHelper(object):
         self.process_info =  Popen(command_params, creationflags=self.creationflags, stdin=DEVNULL)
             
         
-    def wait(self):
+    def wait(self) -> None:
         return self.process_info.wait()
 
-    def get_pid(self):
+    def get_pid(self)-> int:
         return self.process_info.pid
 
+    def finish(self) -> None:
+        self.kill(self.get_pid())
+        
+    def kill(self, pid: int) -> None:
+        try:
+            process = psutil.Process(pid)
+            process.kill()
+        except psutil.NoSuchProcess:
+            pass
+        

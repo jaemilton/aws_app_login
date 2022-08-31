@@ -24,7 +24,6 @@ def start(argv):
             - AWS_USERNAME
             - AWS_PASSWORD
             - OTP_2FA_DEVICE_ID, if it is necessary for aws logon
-            - 
 
             -h or -? help
         """)
