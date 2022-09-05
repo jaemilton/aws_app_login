@@ -30,6 +30,8 @@ class OsProcessHelper(object):
         command_params = [self.command]
         command_params.extend(self.args)
         self.process_info =  Popen(command_params, creationflags=self.creationflags, stdin=DEVNULL)
+        if self.process_info == None:
+            raise Exception(f"Error: Process {command_params} not started.")
             
         
     def wait(self) -> None:
@@ -41,7 +43,7 @@ class OsProcessHelper(object):
     def finish(self) -> None:
         self.kill(self.get_pid())
         
-    def kill(self, pid: int) -> None:
+    def kill(pid: int) -> None:
         try:
             process = psutil.Process(pid)
             process.kill()
