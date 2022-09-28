@@ -11,7 +11,9 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
+            // "args": ["-url", "https://jaemilton.awsapps.com/start#/"]
             "args": ["-url", "https://jaemilton.awsapps.com/start#/", "-b", "EDGE"]
+            // "args": ["-url", "https://jaemilton.awsapps.com/start#/", "-b", "FIREFOX"]
         }
     ]
 }
