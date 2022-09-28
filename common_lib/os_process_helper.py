@@ -1,13 +1,12 @@
 #!/usr/bin/python3
 # -*- coding: UTF-8 -*-
-from random import triangular
-import sys
+import sys, os
 from subprocess import Popen
 import psutil
 from subprocess import DEVNULL
 from typing import List
 if sys.platform == "win32":
-    from subprocess import DETACHED_PROCESS, CREATE_NEW_PROCESS_GROUP, CREATE_BREAKAWAY_FROM_JOB
+    from subprocess import DETACHED_PROCESS, CREATE_NEW_PROCESS_GROUP, CREATE_BREAKAWAY_FROM_JOB, CREATE_NO_WINDOW
 
 class OsProcessHelper(object):
     """
@@ -18,7 +17,7 @@ class OsProcessHelper(object):
     """
     creationflags=0
     if sys.platform == "win32":
-        creationflags = DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_BREAKAWAY_FROM_JOB
+        creationflags = DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_BREAKAWAY_FROM_JOB | CREATE_NO_WINDOW
 
     def __init__(self, 
                     command:str,
@@ -30,23 +29,28 @@ class OsProcessHelper(object):
         command_params = [self.command]
         command_params.extend(self.args)
         self.process_info =  Popen(command_params, creationflags=self.creationflags, stdin=DEVNULL)
+        # self._pid = os.spawnl(os.P_DETACH, self.command, " ".join(str(x) for x in  self.args))
         if self.process_info == None:
-            raise Exception(f"Error: Process {command_params} not started.")
+            raise Exception(f"Error: Process {self.command} not started.")
             
         
-    def wait(self) -> None:
-        return self.process_info.wait()
+    # def wait(self) -> None:
+    #     return self.process_info.wait()
 
     def get_pid(self)-> int:
-        return self.process_info.pid
+        return self._pid
 
     def finish(self) -> None:
         self.kill(self.get_pid())
         
     def kill(pid: int) -> None:
-        try:
-            process = psutil.Process(pid)
-            process.kill()
-        except psutil.NoSuchProcess:
-            pass
+        if sys.platform == "win32":
+            Popen(["taskkill", "/PID", str(pid), "/F"])
+        else:
+            Popen(["kill", str(pid), "-9"])
+        # try:
+        #     process = psutil.Process(pid)
+        #     process.kill()
+        # except psutil.NoSuchProcess:
+        #     pass
         

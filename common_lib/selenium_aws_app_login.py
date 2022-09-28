@@ -4,9 +4,8 @@ from array import array
 import os
 import sys
 from time import sleep
-from turtle import st
-import psutil
 from common_lib.common_error import BadUserInputError
+import psutil
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import  DesiredCapabilities
 from selenium.webdriver.support.ui import WebDriverWait
@@ -61,7 +60,7 @@ class SeleniumAwsAppLogin(object):
     self._aws_start_url:str = aws_start_url
     self._otp_2fa_devide_id:str = otp_2fa_devide_id
     self.browser:BrowserType = browser
-    self.WEBDRIVER_DEBUG_ARGS= f"--port {self.WEBDRIVER_DEBUG_PORT}" if self.browser == BrowserType.FIREFOX else f"--port={self.WEBDRIVER_DEBUG_PORT}"
+    self.WEBDRIVER_DEBUG_ARGS= ["--port", f"{self.WEBDRIVER_DEBUG_PORT}"] if self.browser == BrowserType.FIREFOX else [f"--port={self.WEBDRIVER_DEBUG_PORT}"]
     self._debug:bool = debug
     self.browser_path:str = None
     self.selenium_driver_path:str = None
@@ -86,13 +85,13 @@ class SeleniumAwsAppLogin(object):
     browser_options = None
     if self.browser == BrowserType.CHROME:
       browser_options = ChromeOptions()
-      # browser_options.add_experimental_option("debuggerAddress",f"localhost:{self.WEBDRIVER_DEBUG_PORT}")
+      browser_options.add_experimental_option("debuggerAddress",f"localhost:{self.WEBDRIVER_DEBUG_PORT}")
     elif self.browser == BrowserType.EDGE:
       browser_options = EdgeOptions()
-      # browser_options.add_experimental_option("debuggerAddress",f"localhost:{self.WEBDRIVER_DEBUG_PORT}")
+      browser_options.add_experimental_option("debuggerAddress",f"localhost:{self.WEBDRIVER_DEBUG_PORT}")
     elif self.browser == BrowserType.FIREFOX:
       browser_options = FirefoxOptions()
-      # browser_options.add_argument(f"--websocket-port {self.WEBDRIVER_DEBUG_PORT}")
+      
 
     
     return browser_options
@@ -164,17 +163,14 @@ class SeleniumAwsAppLogin(object):
     return False if self._get_webdriver_process_info(debug_args) is None else True
 
   def _start_detached_browser_with_debug(self):
-    browser_remote_debug_parameter:str
     profile_dir_name=f"{self.browser_name}Profile"
     profile_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), profile_dir_name)
     if self.browser == BrowserType.FIREFOX:
-      browser_remote_debug_parameter=f"--remote-debugging-port"
-      profile_path_variable="-profile"
+      #--marionette --remote-debugging-port 9222 --remote-allow-hosts localhost -no-remote -profile C:\Users\JAEMIL~1\AppData\Local\Temp\rust_mozprofile5nb3nr
+      browser_debug_args=['--marionette', '--remote-debugging-port', str(self.WEBDRIVER_DEBUG_PORT), '-profile', profile_path]
     else:
-      browser_remote_debug_parameter=f"--remote-debugging-port="
-      profile_path_variable="--user-data-dir="
+      browser_debug_args=[f'--remote-debugging-port={self.WEBDRIVER_DEBUG_PORT}', f'--user-data-dir={profile_path}']
       
-    browser_debug_args=[browser_remote_debug_parameter, str(self.WEBDRIVER_DEBUG_PORT), profile_path_variable, profile_path]
     self._start_detached_process(app_path=f"{self.browser_path}", app_args=browser_debug_args)
  
   def _start_detached_process(self, app_path:str, app_args:array) -> None:
@@ -228,9 +224,9 @@ class SeleniumAwsAppLogin(object):
       driver = webdriver.Remote(command_executor=url_webdriver ,desired_capabilities=DesiredCapabilities.FIREFOX)
     return driver
 
-  def _get_remote_webdriver_for_debug_browser(self) -> RemoteWebDriver:
+  def _get_webdriver(self) -> RemoteWebDriver:
 
-    # self._start_detached_browser_with_debug()
+    self._start_detached_browser_with_debug()
     options = self._get_browser_options()
 
     driver:RemoteWebDriver = None
@@ -239,17 +235,24 @@ class SeleniumAwsAppLogin(object):
     elif self.browser == BrowserType.EDGE:
       driver = webdriver.Edge(executable_path=self.selenium_driver_path, options=options)
     elif self.browser == BrowserType.FIREFOX:
-      driver = webdriver.Firefox(executable_path=self.selenium_driver_path, options=options)
+      caps = webdriver.DesiredCapabilities().FIREFOX
+      # service_args= ['--connect-existing', '--marionette-port', f'{self.WEBDRIVER_DEBUG_PORT}']
+      # driver = webdriver.Firefox(executable_path=self.selenium_driver_path, service_args=service_args)
+      
+      caps["moz:websocket-port"] = self.WEBDRIVER_DEBUG_PORT
+      caps["connect-existing"] = True
+      # caps["moz:marionette-port"] = self.WEBDRIVER_DEBUG_PORT
+      driver = webdriver.Firefox(executable_path=self.selenium_driver_path, capabilities=caps)
     return driver
 
   def _start_detached_webdriver(self) -> None:
-    self._start_detached_process( app_path=self.selenium_driver_path, app_args=[self.WEBDRIVER_DEBUG_ARGS])
+    self._start_detached_process( app_path=self.selenium_driver_path, app_args=self.WEBDRIVER_DEBUG_ARGS)
 
   def login(self) -> None:
 
-    # driver = self._get_remote_webdriver()
+    driver = self._get_remote_webdriver()
     
-    driver = self._get_remote_webdriver_for_debug_browser()
+    # driver = self._get_webdriver()
     driver.maximize_window()
     
     # while(not self._check_debug_port_opened()):
